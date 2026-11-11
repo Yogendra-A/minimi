@@ -42,8 +42,38 @@ export function sanitizeWebContent(raw: string): string {
 }
 
 /**
- * Compares a historical factual baseline with current observation like-for-like.
+ * Evaluates multiple sources for an entity to detect contradictions.
  */
+export function evaluateMultipleSources(
+  sources: FactValue[]
+): { hasConflict: boolean; status: ComparisonStatus; explanation: string } {
+  if (sources.length <= 1) {
+    return {
+      hasConflict: false,
+      status: 'unchanged based on checked evidence',
+      explanation: 'Single or consistent source verified.'
+    };
+  }
+
+  const first = sources[0];
+  const conflict = sources.find(
+    (s) => s.value.trim().toLowerCase() !== first.value.trim().toLowerCase()
+  );
+
+  if (conflict) {
+    return {
+      hasConflict: true,
+      status: 'inconclusive',
+      explanation: `Contradictory sources detected: ${first.sourceUrl || 'Source A'} reports ${first.value}${first.currency ? ' ' + first.currency : ''}, whereas ${conflict.sourceUrl || 'Source B'} reports ${conflict.value}${conflict.currency ? ' ' + conflict.currency : ''}. The evidence is conflicting and cannot be reconciled without authoritative primary verification.`
+    };
+  }
+
+  return {
+    hasConflict: false,
+    status: 'unchanged based on checked evidence',
+    explanation: 'All checked sources report consistent values.'
+  };
+}
 export function compareFactsLikeForLike(
   baseline: FactValue | null,
   current: FactValue | null

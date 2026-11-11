@@ -33,10 +33,22 @@ export class MockLLMProvider implements LLMProvider {
         .join('\n');
 
       // Check if baseline for this specific query was present in context
-      const hasBaseline = systemMsg.includes('Retrieved Conversation Memory:') &&
-        !systemMsg.includes('(No matching conversation or factual records found') &&
-        (!qLower.includes('kubernetes') || sysLower.includes('kubernetes')) &&
-        (!qLower.includes('snowflake') || sysLower.includes('snowflake'));
+      let hasBaseline = systemMsg.includes('Retrieved Conversation Memory:') &&
+        !systemMsg.includes('(No matching conversation or factual records found');
+
+      // If user is asking about specific tools/products, verify that the retrieved context actually mentions at least one of them
+      const candidateEntities = userMsg.match(/\b([A-Z][a-zA-Z0-9]+)\b/g)?.filter(
+        (w) => !['Has', 'What', 'When', 'Where', 'Why', 'How', 'Did', 'Does', 'Is', 'Are', 'Can', 'Could', 'Our', 'Last', 'Next', 'Since', 'Tell', 'Check'].includes(w)
+      ) || [];
+
+      if (candidateEntities.length > 0) {
+        const mentionsCandidate = candidateEntities.some((e) =>
+          sysLower.includes(e.toLowerCase())
+        );
+        if (!mentionsCandidate) {
+          hasBaseline = false;
+        }
+      }
 
       if (!hasBaseline) {
         return {
@@ -106,6 +118,17 @@ export class MockLLMProvider implements LLMProvider {
       };
     }
 
+    if (qLower.includes('fictional') || qLower.includes('acrocrm') || qLower.includes('briskflow') || qLower.includes("let's evaluate")) {
+      return {
+        content: `I have noted and recorded these 5 CRM providers and their pricing details:
+1. **AcroCRM**: $15/seat/month
+2. **BriskFlow**: $29/seat/month
+3. **CloudNova**: $45/seat/month
+4. **DynoLeads**: $60/seat/month
+5. **EchoDeal**: $80/seat/month`
+      };
+    }
+
     // Memory-only or conversational response
     if (systemMsg.includes('Retrieved Conversation Memory:') && !systemMsg.includes('(No matching conversation or factual records found')) {
       const memorySlice = systemMsg.split('### Retrieved Conversation Memory:')[1]?.split('### Core Rules')[0]?.trim() || '';
@@ -114,9 +137,41 @@ export class MockLLMProvider implements LLMProvider {
       };
     }
 
+    // Check conversation history (prior turns in the current active conversation)
+    const priorAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && !m.tool_calls)?.content;
+    const priorUser = messages.filter((m) => m.role === 'user').slice(-2, -1)[0]?.content;
+    if (priorAssistant || priorUser) {
+      if (
+        qLower.includes('which five') ||
+        qLower.includes('providers') ||
+        qLower.includes('original prices') ||
+        qLower.includes('costs of those') ||
+        qLower.includes('what were') ||
+        qLower.includes('what did') ||
+        qLower.includes('tools') ||
+        qLower.includes('prices') ||
+        qLower.includes('pricing')
+      ) {
+        return {
+          content: `Based on our earlier discussion in this conversation:\n\n${priorAssistant || priorUser}`
+        };
+      }
+    }
+
     if (qLower.includes('starter tier') || qLower.includes('follow-up')) {
       return {
         content: 'Regarding the starter tier we discussed: the pricing plan begins at $20/user/month.'
+      };
+    }
+
+    if (qLower.includes('fictional') || qLower.includes('acrocrm') || qLower.includes('briskflow')) {
+      return {
+        content: `I have noted and recorded these 5 CRM providers and their pricing details:
+1. **AcroCRM**: $15/seat/month
+2. **BriskFlow**: $29/seat/month
+3. **CloudNova**: $45/seat/month
+4. **DynoLeads**: $60/seat/month
+5. **EchoDeal**: $80/seat/month`
       };
     }
 
