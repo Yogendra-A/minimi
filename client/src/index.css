@@ -181,6 +181,18 @@ body {
   border: 1px solid #bfdbfe;
 }
 
+.badge-live {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.badge-mock {
+  background-color: #fefce8;
+  color: #a16207;
+  border: 1px solid #fde047;
+}
+
 .badge-tool {
   background-color: #ecfdf5;
   color: #059669;

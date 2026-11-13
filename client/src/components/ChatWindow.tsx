@@ -10,6 +10,10 @@ interface ChatWindowProps {
   isSearching: boolean;
   onSendMessage: (text: string) => void;
   timezone: string;
+  isLive?: boolean;
+  llmProvider?: string;
+  isLiveSearch?: boolean;
+  searchProvider?: string;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -18,7 +22,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   isLoading,
   isSearching,
   onSendMessage,
-  timezone
+  timezone,
+  isLive = false,
+  llmProvider = 'mock',
+  isLiveSearch = false,
+  searchProvider = 'mock'
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -47,11 +55,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <header className="chat-header">
         <h2 className="chat-header-title">{conversationTitle}</h2>
         <div className="chat-header-meta">
-          <span className="badge badge-info">{timezone}</span>
-          <span className="badge badge-tool">
-            <Globe size={12} />
-            <span>web_search tool</span>
+          <span className={`badge ${isLive ? 'badge-live' : 'badge-mock'}`}>
+            <Sparkles size={12} />
+            <span>{isLive ? `LLM: Live (${llmProvider.toUpperCase()})` : 'LLM: Mock'}</span>
           </span>
+          <span className={`badge ${isLiveSearch ? 'badge-live' : 'badge-mock'}`}>
+            <Globe size={12} />
+            <span>{isLiveSearch ? `Search: Live (${searchProvider.toUpperCase()})` : 'Search: Mock'}</span>
+          </span>
+          <span className="badge badge-info">{timezone}</span>
         </div>
       </header>
 

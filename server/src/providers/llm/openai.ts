@@ -1,10 +1,10 @@
 import { LLMProvider, LLMMessage, LLMToolDefinition, LLMResponse } from './types.js';
 
 export class OpenAIProvider implements LLMProvider {
-  name = 'openai';
-  private apiKey: string;
-  private model: string;
-  private baseUrl: string;
+  name: string = 'openai';
+  protected apiKey: string;
+  protected model: string;
+  protected baseUrl: string;
 
   constructor(apiKey: string, model: string = 'gpt-4o-mini', baseUrl: string = 'https://api.openai.com/v1') {
     this.apiKey = apiKey;
@@ -37,25 +37,42 @@ export class OpenAIProvider implements LLMProvider {
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const res = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
+      let res: Response;
+      try {
+        res = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+      } catch (fetchErr: any) {
+        if (fetchErr.name === 'AbortError' || controller.signal.aborted) {
+          throw new Error(`${this.name.toUpperCase()} request timed out after 30000ms`);
+        }
+        throw new Error(`${this.name.toUpperCase()} network request failed: ${fetchErr.message}`);
+      }
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`OpenAI API error (${res.status}): ${errText}`);
+        if (res.status === 429) {
+          throw new Error(`${this.name.toUpperCase()} rate limit exceeded (429): ${errText}`);
+        }
+        throw new Error(`${this.name.toUpperCase()} API error (${res.status}): ${errText}`);
       }
 
-      const data: any = await res.json();
+      let data: any;
+      try {
+        data = await res.json();
+      } catch (jsonErr: any) {
+        throw new Error(`${this.name.toUpperCase()} returned invalid JSON response: ${jsonErr.message}`);
+      }
+
       const choice = data.choices?.[0];
       if (!choice) {
-        throw new Error('OpenAI returned no completion choice.');
+        throw new Error(`${this.name.toUpperCase()} returned no completion choice.`);
       }
 
       const msg = choice.message;

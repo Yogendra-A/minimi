@@ -137,10 +137,12 @@ Optimize based on measurements rather than speculative complexity.
 
 ## 7. Technology and alternatives
 
--   TypeScript, Node.js, React, Vite, Fastify, SQLite, Drizzle ORM, Zod,
+-   TypeScript, Node.js, React, Vite, Fastify, SQLite (`node:sqlite`), Drizzle ORM, Zod,
     and Vitest.
 -   Use a small provider interface for LLMs and search so providers can
-    be benchmarked/swapped without changing orchestration.
+    be benchmarked/swapped without changing orchestration:
+    - **LLM Providers**: Groq (`qwen/qwen3.8-27b`), xAI Grok (`grok-2-latest`), OpenAI (`gpt-4o-mini`), Gemini, and deterministic Mock.
+    - **Search Providers**: Tavily Search (`https://api.tavily.com`), Brave, SerpAPI, and deterministic Mock.
 -   Compare model providers on the same task set for tool-call
     correctness, temporal reasoning, answer quality, latency, and cost;
     select a practical default and document the measured basis.

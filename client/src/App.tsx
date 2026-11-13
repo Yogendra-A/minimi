@@ -4,6 +4,7 @@ import { ChatWindow } from './components/ChatWindow.js';
 import {
   Conversation,
   Message,
+  HealthStatus,
   fetchConversations,
   createConversation,
   fetchMessages,
@@ -19,11 +20,13 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [healthInfo, setHealthInfo] = useState<HealthStatus | null>(null);
 
   // Load health & conversations
   useEffect(() => {
     checkHealth()
       .then((h) => {
+        setHealthInfo(h);
         if (h.timezone) setTimezone(h.timezone);
       })
       .catch((err) => console.warn('Could not fetch health:', err));
@@ -155,6 +158,10 @@ export const App: React.FC = () => {
         onNewChat={handleNewChat}
         onDelete={handleDeleteConv}
         timezone={timezone}
+        isLive={healthInfo?.isLive ?? false}
+        llmProvider={healthInfo?.llmProvider ?? 'mock'}
+        isLiveSearch={healthInfo?.isLiveSearch ?? false}
+        searchProvider={healthInfo?.searchProvider ?? 'mock'}
       />
       <ChatWindow
         conversationTitle={activeTitle}
@@ -163,6 +170,10 @@ export const App: React.FC = () => {
         isSearching={isSearching}
         onSendMessage={handleSendMessage}
         timezone={timezone}
+        isLive={healthInfo?.isLive ?? false}
+        llmProvider={healthInfo?.llmProvider ?? 'mock'}
+        isLiveSearch={healthInfo?.isLiveSearch ?? false}
+        searchProvider={healthInfo?.searchProvider ?? 'mock'}
       />
     </div>
   );

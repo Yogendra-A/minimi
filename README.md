@@ -9,16 +9,19 @@ The agent features persistent conversational memory, explicit temporal reasoning
 ## Key Features
 
 1. **Natural Conversational Interaction**: Answers general questions naturally and transparently handles uncertainty.
-2. **Persistent SQLite Memory**: Retains conversation history, messages, memory items, recognized entities, search snapshots, and factual observations across server restarts.
+2. **Persistent SQLite Memory**: Retains conversation history, messages, memory items, recognized entities, search snapshots, and factual observations across server restarts using standard Node.js built-in `node:sqlite`.
 3. **Temporal Reasoning**: Interprets relative and explicit dates (`yesterday`, `last Tuesday`, `on 3 November`, `earlier this week`, `since Monday`) against UTC message timestamps and a configurable IANA timezone (`Asia/Kolkata` by default). Plausible ambiguities automatically prompt clarification questions.
 4. **Hybrid Memory Retrieval**: Combines structured SQL date/entity filtering with SQLite FTS5 full-text indexing, prioritizing explicit date boundaries over fuzzy lexical matches.
-5. **Single External Tool (`web_search`)**: Only `web_search` is exposed to the LLM. Database queries and memory retrievals are strictly internal application services.
-6. **Like-for-Like Evidence Comparison**: Compares historical baselines with current primary sources matching currency, billing period, seat counts, and plan tiers. Classifies results into:
+5. **Single External Tool (`web_search`)**: Only `web_search` is exposed to the LLM. Database queries, memory retrievals, and entity lookups are strictly internal application services.
+6. **Live Multi-Provider Support**:
+   - **LLM Providers**: Groq (`qwen/qwen3.8-27b`), xAI Grok, OpenAI (`gpt-4o-mini`), Google Gemini, or built-in deterministic offline mock mode.
+   - **Search Providers**: Tavily Search, Brave Search, SerpAPI, or built-in deterministic offline mock mode.
+7. **Like-for-Like Evidence Comparison**: Compares historical baselines with current primary sources matching currency, billing period, seat counts, and plan tiers. Classifies results into:
    - `changed`
    - `unchanged based on checked evidence`
    - `inconclusive`
    - `not found`
-7. **No Fabricated Data & Prompt Injection Defense**: If a historical baseline is absent, it clearly explains the absence rather than inventing one. Sanitizes untrusted web snippets to neutralize injected commands.
+8. **No Fabricated Data & Prompt Injection Defense**: If a historical baseline is absent, it clearly explains the absence rather than inventing one. Sanitizes untrusted web snippets to neutralize injected commands.
 
 ---
 
@@ -27,7 +30,7 @@ The agent features persistent conversational memory, explicit temporal reasoning
 ```
                       ┌───────────────────────────────────────┐
                       │          React + Vite UI              │
-                      │   (Chat, Search State, Citations)     │
+                      │  (Chat, Live Badges, Citations, Web)  │
                       └──────────────────┬────────────────────┘
                                          │ HTTP REST
                       ┌──────────────────▼────────────────────┐
@@ -79,16 +82,19 @@ TIMEZONE=Asia/Kolkata
 DATABASE_URL=./data/minimi.db
 LOG_LEVEL=info
 
-# LLM Provider: openai | gemini | mock
-# When set to mock (or without keys), works fully offline with deterministic responses.
-LLM_PROVIDER=mock
-OPENAI_API_KEY=your_openai_key_here
-OPENAI_MODEL=gpt-4o-mini
+# LLM Provider Configuration (options: groq | grok | openai | gemini | mock)
+# Default live provider when GROQ_API_KEY is configured:
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=qwen/qwen3.8-27b
 
-# Search Provider: tavily | brave | serpapi | mock
-SEARCH_PROVIDER=mock
-TAVILY_API_KEY=your_tavily_key_here
+# Search Provider Configuration (options: tavily | brave | serpapi | mock)
+# Default live search provider when TAVILY_API_KEY is configured:
+SEARCH_PROVIDER=tavily
+TAVILY_API_KEY=your_tavily_api_key_here
 ```
+
+> **Offline Mode**: If neither API key is set (or `LLM_PROVIDER=mock` and `SEARCH_PROVIDER=mock`), the application runs 100% offline with deterministic mock providers.
 
 ### 4. Seed Historical Conversations
 Preload historical test conversations (Monday CRM shortlist, Nov 3 Neon Postgres inquiry, Tuesday Supabase discussion):
@@ -98,6 +104,10 @@ npm run seed
 
 ### 5. Start Development Server
 Run the frontend (Vite) and backend (Fastify) concurrently with a single command:
+```bash
+npm run dev
+```
+Open **`http://localhost:5173`** in your browser. Live provider badges in the header and sidebar will clearly show whether LLM and Search are in `Live` or `Mock` mode.
 ```bash
 npm run dev
 ```
@@ -134,7 +144,7 @@ The app is preconfigured to handle the 3 minimi hiring challenge scenarios:
 
 ## Testing & Benchmarks
 
-Run the full automated test suite (25 deterministic tests covering temporal resolution, memory retrieval, like-for-like comparator, prompt injection defense, and orchestrator bounds):
+Run the full automated test suite (80 deterministic tests across 8 test suites covering temporal resolution, memory retrieval, like-for-like comparator, prompt injection defense, Groq, xAI Grok, Tavily, and live audit scenarios):
 ```bash
 npm test
 ```

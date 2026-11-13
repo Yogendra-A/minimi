@@ -1,6 +1,6 @@
 import React from 'react';
 import { Conversation } from '../api/client.js';
-import { MessageSquare, Plus, Trash2, Clock, Globe } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Clock, Globe, Zap, ShieldCheck } from 'lucide-react';
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -9,6 +9,10 @@ interface SidebarProps {
   onNewChat: () => void;
   onDelete: (id: string) => void;
   timezone: string;
+  isLive?: boolean;
+  llmProvider?: string;
+  isLiveSearch?: boolean;
+  searchProvider?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -17,7 +21,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelect,
   onNewChat,
   onDelete,
-  timezone
+  timezone,
+  isLive = false,
+  llmProvider = 'mock',
+  isLiveSearch = false,
+  searchProvider = 'mock'
 }) => {
   return (
     <aside className="sidebar">
@@ -58,12 +66,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-footer">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-          <Clock size={12} />
-          <span>TZ: {timezone}</span>
+          {isLive ? <Zap size={12} color="#22c55e" /> : <ShieldCheck size={12} color="#eab308" />}
+          <span style={{ color: isLive ? '#4ade80' : '#fde047', fontWeight: 600 }}>
+            {isLive ? `LLM: Live (${llmProvider.toUpperCase()})` : 'LLM: Mock Mode'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+          <Globe size={12} color={isLiveSearch ? '#22c55e' : '#94a3b8'} />
+          <span style={{ color: isLiveSearch ? '#4ade80' : '#94a3b8', fontWeight: 600 }}>
+            {isLiveSearch ? `Search: Live (${searchProvider.toUpperCase()})` : 'Search: Mock Provider'}
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Globe size={12} />
-          <span>Tool: web_search only</span>
+          <Clock size={12} />
+          <span>TZ: {timezone}</span>
         </div>
       </div>
     </aside>

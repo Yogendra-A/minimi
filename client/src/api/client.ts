@@ -75,7 +75,22 @@ export async function sendMessage(conversationId: string, message: string): Prom
   return res.json();
 }
 
-export async function checkHealth() {
+export interface HealthStatus {
+  status: string;
+  mode?: 'live' | 'mock';
+  searchMode?: 'live' | 'mock';
+  isLive?: boolean;
+  isLiveLLM?: boolean;
+  isLiveSearch?: boolean;
+  timezone: string;
+  llmProvider: string;
+  llmModel?: string;
+  searchProvider: string;
+  uptime: number;
+  timestamp: string;
+}
+
+export async function checkHealth(): Promise<HealthStatus> {
   const res = await fetch('/api/health');
   if (!res.ok) throw new Error('Health check failed');
   return res.json();

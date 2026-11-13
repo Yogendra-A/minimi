@@ -16,7 +16,13 @@ const configSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   // LLM settings
-  LLM_PROVIDER: z.enum(['openai', 'gemini', 'mock']).default('mock'),
+  LLM_PROVIDER: z.enum(['groq', 'grok', 'openai', 'gemini', 'mock']).default('mock'),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default('qwen/qwen3.8-27b'),
+  GROQ_BASE_URL: z.string().default('https://api.groq.com/openai/v1'),
+  XAI_API_KEY: z.string().optional(),
+  GROK_MODEL: z.string().default('grok-2-latest'),
+  XAI_BASE_URL: z.string().default('https://api.x.ai/v1'),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   GEMINI_API_KEY: z.string().optional(),
@@ -41,7 +47,11 @@ if (!parsed.success) {
 
 // Auto-select provider if API key is supplied and provider is default mock
 const raw = parsed.data;
-if (raw.LLM_PROVIDER === 'mock' && raw.OPENAI_API_KEY) {
+if (raw.LLM_PROVIDER === 'mock' && raw.GROQ_API_KEY) {
+  raw.LLM_PROVIDER = 'groq';
+} else if (raw.LLM_PROVIDER === 'mock' && raw.XAI_API_KEY) {
+  raw.LLM_PROVIDER = 'grok';
+} else if (raw.LLM_PROVIDER === 'mock' && raw.OPENAI_API_KEY) {
   raw.LLM_PROVIDER = 'openai';
 } else if (raw.LLM_PROVIDER === 'mock' && raw.GEMINI_API_KEY) {
   raw.LLM_PROVIDER = 'gemini';
