@@ -21,7 +21,7 @@ export class TavilySearchProvider implements SearchProvider {
         query: searchQuery.query,
         search_depth: 'basic',
         include_answer: false,
-        max_results: 5
+        max_results: 3
       };
 
       if (searchQuery.domains && searchQuery.domains.length > 0) {

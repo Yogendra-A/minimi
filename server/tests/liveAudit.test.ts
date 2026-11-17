@@ -76,7 +76,7 @@ describe('Final Live Acceptance Audit Suite', () => {
       const badTavily = new TavilySearchProvider('invalid-key-test');
       // Tavily search should fail gracefully on bad connection/key
       await expect(badTavily.search({ query: 'test' })).rejects.toThrow();
-    });
+    }, 15000);
 
     it('verifies search results contain valid URLs, domains, and retrieval timestamps', async () => {
       const results = await mockSearch.search({ query: 'hubspot pricing' });

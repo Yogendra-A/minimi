@@ -14,7 +14,7 @@ import {
 import { LLMMessage, LLMProvider, LLMResponse } from '../providers/llm/types.js';
 import { SearchProvider } from '../providers/search/types.js';
 import { getLLMProvider, getSearchProvider } from '../providers/index.js';
-import { WEB_SEARCH_TOOL, webSearchArgsSchema, WebSearchArgs } from './tools.js';
+import { WEB_SEARCH_TOOL, webSearchArgsSchema, WebSearchArgs, parseToolCallsFromText } from './tools.js';
 import { buildSystemPrompt } from './prompts.js';
 import { sanitizeWebContent } from '../evidence/comparator.js';
 
@@ -143,20 +143,34 @@ export class AgentOrchestrator {
       round++;
       const response: LLMResponse = await this.llmProvider.generate(messages, [WEB_SEARCH_TOOL]);
 
+      let toolCalls = response.tool_calls;
+      let responseContent = response.content || '';
+
+      // Fallback: If provider returned tool calls inside content as XML/text
+      if ((!toolCalls || toolCalls.length === 0) && responseContent.includes('<tool_call>')) {
+        const parsed = parseToolCallsFromText(responseContent);
+        if (parsed.length > 0) {
+          toolCalls = parsed;
+          responseContent = responseContent.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+        }
+      }
+
       // If no tool call was made, we have our final text response
-      if (!response.tool_calls || response.tool_calls.length === 0) {
-        finalContent = response.content || 'I processed your request, but have no further information.';
+      if (!toolCalls || toolCalls.length === 0) {
+        finalContent = responseContent.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim() ||
+          responseContent ||
+          'I processed your request, but have no further information.';
         break;
       }
 
       // Model requested tool calls
       messages.push({
         role: 'assistant',
-        content: response.content || '',
-        tool_calls: response.tool_calls
+        content: responseContent,
+        tool_calls: toolCalls
       });
 
-      for (const tc of response.tool_calls) {
+      for (const tc of toolCalls) {
         if (tc.function.name !== 'web_search') {
           messages.push({
             role: 'tool',
@@ -235,16 +249,18 @@ export class AgentOrchestrator {
           resultsCount: results.length
         });
 
-        // Collect citations and sanitize content against prompt injection
-        const sanitizedResults = results.map((r) => {
+        // Collect citations and compress snippets to minimize input tokens
+        const sanitizedResults = results.slice(0, 3).map((r) => {
           allCitations.push({ title: r.title, url: r.url, domain: r.domain });
+          const rawSnippet = r.snippet || '';
+          // Compress snippet to max 350 chars while retaining factual numbers and plans
+          const compressedSnippet = rawSnippet.length > 350 ? rawSnippet.slice(0, 350) + '...' : rawSnippet;
           return {
             title: r.title,
             url: r.url,
-            snippet: sanitizeWebContent(r.snippet),
+            snippet: sanitizeWebContent(compressedSnippet),
             domain: r.domain,
-            published_at: r.published_at,
-            retrieved_at: r.retrieved_at
+            published_at: r.published_at
           };
         });
 
@@ -261,6 +277,12 @@ export class AgentOrchestrator {
     if (!finalContent) {
       const fallbackResponse = await this.llmProvider.generate(messages, []);
       finalContent = fallbackResponse.content || 'Unable to complete search evaluation within the allowed rounds.';
+    }
+
+    // Clean any remaining raw tool tags so they never leak to user view
+    finalContent = finalContent.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+    if (!finalContent) {
+      finalContent = 'I processed your request, but have no further information.';
     }
 
     // 10. Persist assistant message

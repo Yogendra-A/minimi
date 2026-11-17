@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [healthInfo, setHealthInfo] = useState<HealthStatus | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Load health & conversations
   useEffect(() => {
@@ -34,6 +35,22 @@ export const App: React.FC = () => {
     loadConversations();
   }, []);
 
+  // Keyboard shortcut: Cmd/Ctrl + N for new chat, Cmd/Ctrl + \ for sidebar toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        handleNewChat();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const loadConversations = async () => {
     try {
       const list = await fetchConversations();
@@ -42,7 +59,6 @@ export const App: React.FC = () => {
         setActiveConvId(list[0].id);
         loadMessages(list[0].id);
       } else if (list.length === 0) {
-        // Create initial default conversation
         handleNewChat();
       }
     } catch (err) {
@@ -66,7 +82,7 @@ export const App: React.FC = () => {
 
   const handleNewChat = async () => {
     try {
-      const newConv = await createConversation('New Conversation');
+      const newConv = await createConversation('New Discussion');
       setConversations((prev) => [newConv, ...prev]);
       setActiveConvId(newConv.id);
       setMessages([]);
@@ -109,7 +125,13 @@ export const App: React.FC = () => {
 
     // If query looks like a change/freshness question, indicate search
     const lower = text.toLowerCase();
-    if (lower.includes('change') || lower.includes('still correct') || lower.includes('pricing') || lower.includes('today')) {
+    if (
+      lower.includes('change') ||
+      lower.includes('still correct') ||
+      lower.includes('pricing') ||
+      lower.includes('today') ||
+      lower.includes('shortlist')
+    ) {
       setIsSearching(true);
     }
 
@@ -147,7 +169,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const activeTitle = conversations.find((c) => c.id === activeConvId)?.title || 'Chat';
+  const activeTitle = conversations.find((c) => c.id === activeConvId)?.title || 'Discussion';
 
   return (
     <div className="app-container">
@@ -162,6 +184,8 @@ export const App: React.FC = () => {
         llmProvider={healthInfo?.llmProvider ?? 'mock'}
         isLiveSearch={healthInfo?.isLiveSearch ?? false}
         searchProvider={healthInfo?.searchProvider ?? 'mock'}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <ChatWindow
         conversationTitle={activeTitle}
@@ -174,6 +198,7 @@ export const App: React.FC = () => {
         llmProvider={healthInfo?.llmProvider ?? 'mock'}
         isLiveSearch={healthInfo?.isLiveSearch ?? false}
         searchProvider={healthInfo?.searchProvider ?? 'mock'}
+        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
     </div>
   );

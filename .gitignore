@@ -29,3 +29,8 @@ yarn-debug.log*
 .DS_Store
 Thumbs.db
 key.txt
+
+# Media & Videos
+*.mp4
+*.mov
+*.webm

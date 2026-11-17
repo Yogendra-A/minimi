@@ -1,4 +1,5 @@
-import { LLMProvider, LLMMessage, LLMToolDefinition, LLMResponse } from './types.js';
+import { LLMProvider, LLMMessage, LLMToolDefinition, LLMResponse, LLMToolCall } from './types.js';
+import { parseToolCallsFromText } from '../../agent/tools.js';
 
 export class OpenAIProvider implements LLMProvider {
   name: string = 'openai';
@@ -76,9 +77,22 @@ export class OpenAIProvider implements LLMProvider {
       }
 
       const msg = choice.message;
+      let toolCalls: LLMToolCall[] | undefined = msg.tool_calls;
+      let content: string | null = msg.content || null;
+
+      // Fallback: If model outputted tool call XML/JSON tags in text content
+      if ((!toolCalls || toolCalls.length === 0) && content && content.includes('<tool_call>')) {
+        const parsed = parseToolCallsFromText(content);
+        if (parsed.length > 0) {
+          toolCalls = parsed;
+          const cleaned = content.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+          content = cleaned.length > 0 ? cleaned : null;
+        }
+      }
+
       return {
-        content: msg.content || null,
-        tool_calls: msg.tool_calls,
+        content,
+        tool_calls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
         finish_reason: choice.finish_reason,
         usage: data.usage
       };

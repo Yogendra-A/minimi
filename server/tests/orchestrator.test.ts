@@ -140,4 +140,46 @@ describe('Bounded Agent Orchestrator', () => {
 
     expect(res.response).toContain('historical baseline');
   });
+
+  it('handles model emitting tool calls as XML text content (<tool_call>) and executes searches', async () => {
+    mockLLM.customResponses = [
+      {
+        content: `<tool_call>
+<function=web_search>
+<parameter=query>
+OpenAI DevDay 2026 Dots agent GPT-6 Astra announcement date
+</parameter>
+<parameter=recency>
+year
+</parameter>
+</function>
+</tool_call>
+<tool_call>
+<function=web_search>
+<parameter=query>
+Anthropic Claude Cowork computer use March 2026 announcement
+</parameter>
+<parameter=recency>
+year
+</parameter>
+</function>
+</tool_call>`,
+        tool_calls: undefined
+      },
+      {
+        content: 'Based on search results, OpenAI DevDay 2026 announced Dots agents and Anthropic announced Claude Cowork.'
+      }
+    ];
+
+    const res = await orchestrator.handleMessage(
+      'conv-test-xml-tool-calls',
+      'Tell me about OpenAI DevDay 2026 and Anthropic Cowork',
+      refTime
+    );
+
+    expect(mockSearch.searchCount).toBe(2);
+    expect(res.searchesExecuted.length).toBe(2);
+    expect(res.response).not.toContain('<tool_call>');
+    expect(res.response).toContain('OpenAI DevDay 2026');
+  });
 });
